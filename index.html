@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="IG Review" />
+  <meta name="description" content="Revisa a quién sigues en Instagram, uno a uno, desde el móvil." />
+  <title>Instagram Review Lite</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>IG Review <span>Lite</span></h1>
+    <nav>
+      <button id="listBtn" class="icon-btn" title="Ver lista" aria-label="Ver lista">☰</button>
+      <button id="importBtn" class="icon-btn" title="Importar" aria-label="Importar">＋</button>
+      <button id="exportBtn" class="icon-btn" title="Exportar" aria-label="Exportar">⇩</button>
+    </nav>
+  </header>
+
+  <section class="progress" aria-label="Progreso">
+    <div class="bar"><div id="bar"></div></div>
+    <div class="chips">
+      <span><b id="pending">0</b> pendientes</span>
+      <span class="c-keep"><b id="keep">0</b> mantener</span>
+      <span class="c-remove"><b id="remove">0</b> eliminar</span>
+      <span class="c-later"><b id="later">0</b> después</span>
+    </div>
+  </section>
+
+  <main id="main">
+    <!-- Sin lista -->
+    <section id="welcome" class="panel" hidden>
+      <div class="big-emoji">📋</div>
+      <h2>Empieza importando tu lista</h2>
+      <p>Sube un CSV/TXT/JSON con usuarios, el archivo <code>following.json</code> o <code>following.html</code> de la descarga de datos de Instagram, o pega los usuarios a mano.</p>
+      <button class="btn primary wide" data-open="importDlg">Importar lista</button>
+    </section>
+
+    <!-- Revisando -->
+    <section id="review" hidden>
+      <article id="card" class="card">
+        <div class="stamp" id="stamp"></div>
+        <div class="avatar" id="avatar">?</div>
+        <div class="username" id="username">@—</div>
+        <div class="position" id="position"></div>
+        <a id="openLink" class="btn primary wide" href="#" target="_blank" rel="noopener noreferrer">Abrir en Instagram ↗</a>
+        <p class="tip">Desliza → mantener · ← eliminar · ↑ después</p>
+      </article>
+    </section>
+
+    <!-- Terminado -->
+    <section id="done" class="panel" hidden>
+      <div class="big-emoji">✅</div>
+      <h2>¡Revisión completada!</h2>
+      <p id="doneText"></p>
+      <button id="reviewLaterBtn" class="btn wide">Revisar los marcados “Después”</button>
+      <button class="btn primary wide" data-open="exportDlg">Exportar resultados</button>
+    </section>
+  </main>
+
+  <footer id="actions" class="actions" hidden>
+    <button class="act remove" data-d="remove" aria-label="Eliminar"><span>✕</span>Eliminar</button>
+    <button class="act later" data-d="later" aria-label="Después"><span>◷</span>Después</button>
+    <button class="act keep" data-d="keep" aria-label="Mantener"><span>✓</span>Mantener</button>
+    <button id="undoBtn" class="act undo" aria-label="Deshacer"><span>↶</span>Deshacer</button>
+  </footer>
+
+  <!-- Importar -->
+  <dialog id="importDlg" class="sheet">
+    <form method="dialog" class="sheet-body">
+      <h3>Importar perfiles</h3>
+      <label class="btn primary wide file-btn">Elegir archivo (CSV, TXT, JSON, HTML)
+        <input id="fileInput" type="file" accept=".csv,.txt,.json,.html,.htm,text/*,application/json" hidden />
+      </label>
+      <p class="muted center">o pega usuarios / URLs (uno por línea)</p>
+      <textarea id="pasteInput" rows="6" placeholder="@usuario1&#10;https://instagram.com/usuario2&#10;usuario3"></textarea>
+      <fieldset class="mode">
+        <label><input type="radio" name="mode" value="merge" checked /> Añadir a la lista actual</label>
+        <label><input type="radio" name="mode" value="replace" /> Reemplazar (borra el progreso)</label>
+      </fieldset>
+      <div class="row">
+        <button value="cancel" class="btn">Cancelar</button>
+        <button id="pasteImportBtn" value="default" class="btn primary">Importar texto</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Exportar -->
+  <dialog id="exportDlg" class="sheet">
+    <form method="dialog" class="sheet-body">
+      <h3>Exportar</h3>
+      <button type="button" class="btn wide" data-export="csv">Descargar CSV completo</button>
+      <button type="button" class="btn wide" data-export="share" id="shareBtn" hidden>Compartir CSV…</button>
+      <button type="button" class="btn wide" data-export="copy-remove">Copiar lista “Eliminar”</button>
+      <button type="button" class="btn wide" data-export="backup">Descargar copia de seguridad (JSON)</button>
+      <p class="muted">La copia de seguridad se puede importar en otro dispositivo para continuar donde lo dejaste. El CSV exportado también conserva las decisiones al reimportarlo.</p>
+      <hr />
+      <button type="button" class="btn wide danger" data-export="reset">Borrar todo</button>
+      <div class="row"><button value="cancel" class="btn">Cerrar</button></div>
+    </form>
+  </dialog>
+
+  <!-- Lista -->
+  <dialog id="listDlg" class="sheet tall">
+    <form method="dialog" class="sheet-body">
+      <div class="row between"><h3>Lista</h3><button value="cancel" class="icon-btn" aria-label="Cerrar">✕</button></div>
+      <input id="search" type="search" placeholder="Buscar usuario…" autocomplete="off" />
+      <div class="filters" id="filters">
+        <button type="button" data-f="all" class="on">Todos</button>
+        <button type="button" data-f="pending">Pendientes</button>
+        <button type="button" data-f="keep">Mantener</button>
+        <button type="button" data-f="remove">Eliminar</button>
+        <button type="button" data-f="later">Después</button>
+      </div>
+      <ul id="list" class="list"></ul>
+      <p id="listMore" class="muted center"></p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
