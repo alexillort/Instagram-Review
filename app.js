@@ -157,6 +157,16 @@
   // ---------- Revisión ----------
   const current = () => state.list.find(u => !state.decisions[u]) || null;
 
+  function nextAfter(u) {
+    let seen = false;
+    for (const x of state.list) {
+      if (state.decisions[x]) continue;
+      if (seen) return x;
+      if (x === u) seen = true;
+    }
+    return null;
+  }
+
   function decide(decision) {
     const u = current();
     if (!u || !DECISIONS.includes(decision)) return;
@@ -204,7 +214,63 @@
   // ---------- UI ----------
   const $ = id => document.getElementById(id);
   const profileUrl = u => `https://www.instagram.com/${encodeURIComponent(u)}/`;
+  const embedUrl = u => `https://www.instagram.com/${encodeURIComponent(u)}/embed/`;
   const card = $('card');
+
+  // ---------- Perfil embebido ----------
+  // Instagram no deja cargar instagram.com/usuario en un iframe, pero sí su
+  // "embed" oficial (/usuario/embed/), que muestra cabecera + últimas publicaciones.
+  // Usamos dos iframes: uno visible y otro que precarga el siguiente perfil.
+  const frames = [...document.querySelectorAll('.ig-frame')].map(el => ({ el, user: null, loaded: false }));
+  let active = frames[0];
+
+  function loadFrame(f, u) {
+    if (f.user === u) return;
+    f.user = u;
+    f.loaded = false;
+    f.el.src = u ? embedUrl(u) : 'about:blank';
+  }
+
+  // El embed no informa de su altura de forma fiable, así que la calculamos:
+  // cabecera (~160px) + rejilla de 3 columnas x 2 filas de miniaturas cuadradas.
+  function fitFrame() {
+    const w = $('frameWrap').clientWidth;
+    if (w) $('frameWrap').style.height = `${Math.ceil(160 + (w * 2) / 3)}px`;
+  }
+  window.addEventListener('resize', fitFrame);
+
+  function applyFrameState() {
+    $('frameLoading').hidden = active.loaded;
+    fitFrame();
+  }
+
+  function showProfile(u, next) {
+    const other = frames.find(f => f !== active);
+    if (active.user !== u && other.user === u) active = other;
+    loadFrame(active, u);
+    frames.forEach(f => {
+      f.el.classList.toggle('active', f === active);
+      f.el.setAttribute('aria-hidden', f === active ? 'false' : 'true');
+      f.el.tabIndex = f === active ? 0 : -1;
+    });
+    const spare = frames.find(f => f !== active);
+    if (next) loadFrame(spare, next);
+    applyFrameState();
+  }
+
+  frames.forEach(f => f.el.addEventListener('load', () => {
+    if (!f.user) return;
+    f.loaded = true;
+    if (f === active) applyFrameState();
+  }));
+
+  $('reloadBtn').addEventListener('click', () => {
+    const u = active.user;
+    if (!u) return;
+    active.user = null;
+    loadFrame(active, u);
+    applyFrameState();
+  });
 
   function render() {
     const c = counts();
@@ -225,9 +291,9 @@
 
     if (u) {
       $('username').textContent = `@${u}`;
-      $('avatar').textContent = u.replace(/[^a-z0-9]/g, '').charAt(0) || '@';
       $('position').textContent = `${total - c.pending + 1} de ${total}`;
       $('openLink').href = profileUrl(u);
+      showProfile(u, nextAfter(u));
       resetCard();
     } else if (total) {
       $('doneText').textContent = `Mantener: ${c.keep} · Eliminar: ${c.remove} · Después: ${c.later}`;

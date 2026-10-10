@@ -49,11 +49,21 @@
     <section id="review" hidden>
       <article id="card" class="card">
         <div class="stamp" id="stamp"></div>
-        <div class="avatar" id="avatar">?</div>
-        <div class="username" id="username">@—</div>
-        <div class="position" id="position"></div>
-        <a id="openLink" class="btn primary wide" href="#" target="_blank" rel="noopener noreferrer">Abrir en Instagram ↗</a>
-        <p class="tip">Desliza → mantener · ← eliminar · ↑ después</p>
+        <div class="card-head">
+          <div class="who">
+            <div class="username" id="username">@—</div>
+            <div class="position" id="position"></div>
+          </div>
+          <button id="reloadBtn" class="icon-btn small" title="Recargar perfil" aria-label="Recargar perfil">↻</button>
+        </div>
+        <div class="frame-wrap" id="frameWrap">
+          <iframe class="ig-frame" title="Perfil de Instagram" scrolling="no" allowtransparency="true"></iframe>
+          <iframe class="ig-frame" title="Perfil de Instagram (siguiente)" scrolling="no" allowtransparency="true" tabindex="-1" aria-hidden="true"></iframe>
+          <div class="frame-loading" id="frameLoading">Cargando perfil…</div>
+        </div>
+        <p class="frame-note">¿No se ve? La cuenta puede ser privada, no existir o haber cambiado de nombre.</p>
+        <a id="openLink" class="btn wide" href="#" target="_blank" rel="noopener noreferrer">Abrir en Instagram ↗</a>
+        <p class="tip">Desliza la tarjeta → mantener · ← eliminar · ↑ después</p>
       </article>
     </section>
 
