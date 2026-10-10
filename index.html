@@ -33,7 +33,9 @@
       <span class="c-keep"><b id="keep">0</b> mantener</span>
       <span class="c-remove"><b id="remove">0</b> eliminar</span>
       <span class="c-later"><b id="later">0</b> después</span>
+      <span class="c-unf"><b id="unfollowedCount">0</b> dejados de seguir</span>
     </div>
+    <button id="unfollowChip" class="chip-btn" hidden>✂ Dejar de seguir · <b id="toUnfollow">0</b> pendientes</button>
   </section>
 
   <main id="main">
@@ -72,8 +74,50 @@
       <div class="big-emoji">✅</div>
       <h2>¡Revisión completada!</h2>
       <p id="doneText"></p>
+      <button id="startUnfollowBtn" class="btn primary wide">✂ Empezar a dejar de seguir</button>
       <button id="reviewLaterBtn" class="btn wide">Revisar los marcados “Después”</button>
-      <button class="btn primary wide" data-open="exportDlg">Exportar resultados</button>
+      <button class="btn wide" data-open="exportDlg">Exportar resultados</button>
+    </section>
+
+    <!-- Modo dejar de seguir -->
+    <section id="unfollow" hidden>
+      <article class="card uf-card">
+        <div class="card-head">
+          <div class="who">
+            <div class="uf-title">✂ Dejar de seguir</div>
+            <div class="position" id="ufPos"></div>
+          </div>
+          <button id="ufExit" class="icon-btn small" title="Salir del modo" aria-label="Salir del modo dejar de seguir">✕</button>
+        </div>
+
+        <div id="ufWork">
+          <div class="username big" id="ufUser">@—</div>
+          <ol class="uf-steps">
+            <li>Toca <b>Abrir en Instagram</b>.</li>
+            <li>Pulsa <b>Siguiendo</b> → <b>Dejar de seguir</b>.</li>
+            <li>Vuelve aquí y toca <b>Hecho</b>.</li>
+          </ol>
+          <a id="ufOpen" class="btn primary wide" href="#" target="_blank" rel="noopener noreferrer">Abrir en Instagram ↗</a>
+          <div class="uf-meta"><span id="ufBatch"></span><span id="ufToday"></span></div>
+        </div>
+
+        <div id="ufPause" class="uf-state" hidden>
+          <div class="big-emoji">⏸</div>
+          <h2>Pausa recomendada</h2>
+          <p class="muted">Has dejado de seguir <b id="ufPauseCount"></b> cuentas seguidas. Instagram puede bloquear temporalmente la acción si se hacen muchas de golpe. Descansa un poco antes de seguir.</p>
+          <div class="countdown" id="ufCountdown">--:--</div>
+          <button id="ufContinue" class="btn wide">Continuar igualmente</button>
+        </div>
+
+        <div id="ufDoneState" class="uf-state" hidden>
+          <div class="big-emoji">🎉</div>
+          <h2>¡No queda nadie por dejar de seguir!</h2>
+          <p class="muted" id="ufDoneText"></p>
+          <button id="ufBack" class="btn primary wide">Volver</button>
+        </div>
+
+        <button id="ufUndo" class="linklike" hidden>↶ Deshacer último</button>
+      </article>
     </section>
   </main>
 
@@ -82,6 +126,12 @@
     <button class="act later" data-d="later" aria-label="Después"><span>◷</span>Después</button>
     <button class="act keep" data-d="keep" aria-label="Mantener"><span>✓</span>Mantener</button>
     <button id="undoBtn" class="act undo" aria-label="Deshacer"><span>↶</span>Deshacer</button>
+  </footer>
+
+  <footer id="ufActions" class="actions uf" hidden>
+    <button id="ufSkip" class="act later" aria-label="Saltar"><span>⏭</span>Saltar</button>
+    <button id="ufKeep" class="act keep" aria-label="Mejor mantener"><span>↩</span>Mantener</button>
+    <button id="ufDoneBtn" class="act done" aria-label="Hecho, ya lo dejé de seguir"><span>✓</span>Hecho</button>
   </footer>
 
   <!-- Importar -->
@@ -110,7 +160,7 @@
       <h3>Exportar</h3>
       <button type="button" class="btn wide" data-export="csv">Descargar CSV completo</button>
       <button type="button" class="btn wide" data-export="share" id="shareBtn" hidden>Compartir CSV…</button>
-      <button type="button" class="btn wide" data-export="copy-remove">Copiar lista “Eliminar”</button>
+      <button type="button" class="btn wide" data-export="copy-remove">Copiar los que faltan por dejar de seguir</button>
       <button type="button" class="btn wide" data-export="backup">Descargar copia de seguridad (JSON)</button>
       <p class="muted">La copia de seguridad se puede importar en otro dispositivo para continuar donde lo dejaste. El CSV exportado también conserva las decisiones al reimportarlo.</p>
       <hr />
@@ -130,6 +180,7 @@
         <button type="button" data-f="keep">Mantener</button>
         <button type="button" data-f="remove">Eliminar</button>
         <button type="button" data-f="later">Después</button>
+        <button type="button" data-f="unfollowed">Dejados</button>
       </div>
       <ul id="list" class="list"></ul>
       <p id="listMore" class="muted center"></p>

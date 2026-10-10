@@ -10,9 +10,14 @@
   const HEADER_WORDS = /^(username|usuario|user|perfil|profile|value|href|name|decision)$/i;
   const MAX_HISTORY = 200;
   const LIST_RENDER_LIMIT = 300;
+  // Ritmo recomendado en el modo "dejar de seguir". Instagram no publica sus límites;
+  // ir por tandas con pausas reduce el riesgo de bloqueos temporales.
+  const UNFOLLOW_BATCH = 20;
+  const UNFOLLOW_PAUSE_MIN = 10;
 
   // ---------- Estado ----------
-  let state = { list: [], decisions: {}, history: [] };
+  const emptyState = () => ({ list: [], decisions: {}, history: [], unfollowed: {}, uf: { batch: 0, pauseUntil: 0 } });
+  let state = emptyState();
 
   function load() {
     try {
@@ -21,7 +26,9 @@
         state = {
           list: d.list,
           decisions: d.decisions && typeof d.decisions === 'object' ? d.decisions : {},
-          history: Array.isArray(d.history) ? d.history : []
+          history: Array.isArray(d.history) ? d.history : [],
+          unfollowed: d.unfollowed && typeof d.unfollowed === 'object' ? d.unfollowed : {},
+          uf: { batch: Number(d.uf && d.uf.batch) || 0, pauseUntil: Number(d.uf && d.uf.pauseUntil) || 0 }
         };
       }
     } catch (_) {}
@@ -67,9 +74,9 @@
 
   const splitCells = line => line.split(/[,;\t]/).map(c => c.trim().replace(/^["']|["']$/g, ''));
 
-  // Devuelve { users: [...], decisions: { user: decision } }
+  // Devuelve { users: [...], decisions: { user: decision }, unfollowed: { user: timestamp } }
   function parseInput(text) {
-    const result = { users: [], decisions: {} };
+    const result = { users: [], decisions: {}, unfollowed: {} };
     const t = (text || '').replace(/^﻿/, '').trim();
     if (!t) return result;
 
@@ -80,6 +87,7 @@
         if (data && data.app === 'instagram-review-lite' && Array.isArray(data.list)) {
           result.users = data.list;
           result.decisions = data.decisions || {};
+          result.unfollowed = data.unfollowed || {};
           return result;
         }
         walkJson(data, result.users);
@@ -93,6 +101,7 @@
     const header = splitCells(lines[0]).map(c => c.toLowerCase());
     const uIdx = header.indexOf('username');
     const dIdx = header.indexOf('decision');
+    const fIdx = header.indexOf('unfollowed');
     if (uIdx !== -1 && dIdx !== -1) {
       for (const line of lines.slice(1)) {
         const cells = splitCells(line);
@@ -101,6 +110,7 @@
         result.users.push(u);
         const d = normalizeDecision(cells[dIdx]);
         if (d) result.decisions[u] = d;
+        if (fIdx !== -1 && /^(yes|si|sí|true|1)$/i.test(cells[fIdx] || '')) result.unfollowed[u] = Date.now();
       }
       return result;
     }
@@ -135,10 +145,15 @@
       const dec = normalizeDecision(d);
       if (u && dec && seen.has(u)) decisions[u] = dec;
     }
+    const unfollowed = {};
+    for (const [raw, t] of Object.entries(parsed.unfollowed || {})) {
+      const u = normalize(raw);
+      if (u && seen.has(u)) unfollowed[u] = Number(t) || Date.now();
+    }
     if (!users.length) { toast('No encontré usuarios válidos'); return false; }
 
     if (mode === 'replace' || !state.list.length) {
-      state = { list: users, decisions, history: [] };
+      state = { ...emptyState(), list: users, decisions, unfollowed };
       toast(`Cargados ${users.length} perfiles`);
     } else {
       const existing = new Set(state.list);
@@ -146,6 +161,7 @@
       for (const u of users) {
         if (!existing.has(u)) { state.list.push(u); added++; }
         if (decisions[u] && !state.decisions[u]) state.decisions[u] = decisions[u];
+        if (unfollowed[u] && !state.unfollowed[u]) state.unfollowed[u] = unfollowed[u];
       }
       toast(added ? `Añadidos ${added} perfiles nuevos` : 'Todos ya estaban en la lista');
     }
@@ -272,20 +288,186 @@
     applyFrameState();
   });
 
+  // ---------- Modo "dejar de seguir" ----------
+  // La app no puede dejar de seguir por ti (Instagram no lo permite a webs externas).
+  // Este modo te guía por las cuentas marcadas "Eliminar": abres el perfil en Instagram,
+  // pulsas "Dejar de seguir" tú mismo y vuelves a marcar "Hecho".
+  let mode = 'review';
+  const ufSkipped = new Set();
+  const ufHistory = [];
+  let ufOpened = null;
+  let ufTimer = null;
+
+  const toUnfollow = () => state.list.filter(u => state.decisions[u] === 'remove' && !state.unfollowed[u]);
+
+  function ufCurrent() {
+    const q = toUnfollow();
+    if (q.length && q.every(u => ufSkipped.has(u))) ufSkipped.clear();
+    return q.find(u => !ufSkipped.has(u)) || null;
+  }
+
+  function unfollowedToday() {
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    return Object.values(state.unfollowed).filter(t => t > since).length;
+  }
+
+  function enterUnfollow() {
+    mode = 'unfollow';
+    ufSkipped.clear();
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  function exitUnfollow() {
+    mode = 'review';
+    clearInterval(ufTimer);
+    ufTimer = null;
+    render();
+  }
+
+  function ufMark(action) {
+    const u = ufCurrent();
+    if (!u || state.uf.pauseUntil > Date.now()) return;
+    ufHistory.push({ u, action });
+    if (action === 'done') {
+      state.unfollowed[u] = Date.now();
+      state.uf.batch++;
+      if (state.uf.batch >= UNFOLLOW_BATCH) {
+        state.uf.batch = 0;
+        state.uf.pauseUntil = Date.now() + UNFOLLOW_PAUSE_MIN * 60 * 1000;
+      }
+    } else if (action === 'keep') {
+      state.decisions[u] = 'keep';
+      toast(`@${u} pasa a “Mantener”`);
+    }
+    ufOpened = null;
+    save();
+    render();
+  }
+
+  function ufSkip() {
+    const u = ufCurrent();
+    if (!u) return;
+    ufSkipped.add(u);
+    ufOpened = null;
+    render();
+  }
+
+  function ufUndo() {
+    const last = ufHistory.pop();
+    if (!last) return;
+    if (last.action === 'done') {
+      delete state.unfollowed[last.u];
+      state.uf.batch = Math.max(0, state.uf.batch - 1);
+    } else if (last.action === 'keep') {
+      state.decisions[last.u] = 'remove';
+    }
+    ufSkipped.delete(last.u);
+    // Colócalo el primero de la cola para verlo de nuevo
+    const i = state.list.indexOf(last.u);
+    const first = state.list.findIndex(x => state.decisions[x] === 'remove' && !state.unfollowed[x] && x !== last.u);
+    if (i !== -1 && first !== -1 && first < i) {
+      state.list.splice(i, 1);
+      state.list.splice(first, 0, last.u);
+    }
+    save();
+    render();
+    toast(`Deshecho: @${last.u}`);
+  }
+
+  function renderUnfollow() {
+    const queue = toUnfollow();
+    const u = ufCurrent();
+    const paused = state.uf.pauseUntil > Date.now();
+    const doneCount = state.list.filter(x => state.decisions[x] === 'remove' && state.unfollowed[x]).length;
+
+    $('ufPos').textContent = `${queue.length} pendientes · ${doneCount} hechas`;
+    $('ufWork').hidden = !u || paused;
+    $('ufPause').hidden = !u || !paused;
+    $('ufDoneState').hidden = !!u;
+    $('ufActions').hidden = !u || paused;
+    $('ufUndo').hidden = !ufHistory.length || paused;
+
+    if (u && !paused) {
+      $('ufUser').textContent = `@${u}`;
+      $('ufOpen').href = profileUrl(u);
+      $('ufBatch').textContent = `Tanda: ${state.uf.batch} / ${UNFOLLOW_BATCH}`;
+      $('ufToday').textContent = `Últimas 24 h: ${unfollowedToday()}`;
+      $('ufDoneBtn').classList.toggle('pulse', ufOpened === u);
+    } else if (!u) {
+      $('ufDoneText').textContent = `Has dejado de seguir ${doneCount} cuentas.`;
+    }
+
+    clearInterval(ufTimer);
+    ufTimer = null;
+    if (u && paused) {
+      $('ufPauseCount').textContent = UNFOLLOW_BATCH;
+      const tick = () => {
+        const left = state.uf.pauseUntil - Date.now();
+        if (left <= 0) { render(); return; }
+        const s = Math.ceil(left / 1000);
+        $('ufCountdown').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      };
+      tick();
+      ufTimer = setInterval(tick, 1000);
+    }
+  }
+
+  $('unfollowChip').addEventListener('click', enterUnfollow);
+  $('startUnfollowBtn').addEventListener('click', enterUnfollow);
+  $('ufExit').addEventListener('click', exitUnfollow);
+  $('ufBack').addEventListener('click', exitUnfollow);
+  $('ufDoneBtn').addEventListener('click', () => ufMark('done'));
+  $('ufKeep').addEventListener('click', () => ufMark('keep'));
+  $('ufSkip').addEventListener('click', ufSkip);
+  $('ufUndo').addEventListener('click', ufUndo);
+  $('ufContinue').addEventListener('click', () => {
+    state.uf.pauseUntil = 0;
+    save();
+    render();
+  });
+  $('ufOpen').addEventListener('click', () => {
+    ufOpened = ufCurrent();
+    $('ufDoneBtn').classList.add('pulse');
+  });
+  // Al volver de Instagram, recuerda marcar "Hecho"
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && mode === 'unfollow' && ufOpened && ufOpened === ufCurrent()) {
+      toast(`¿Ya dejaste de seguir a @${ufOpened}? Toca “Hecho”`);
+    }
+  });
+
   function render() {
     const c = counts();
     const total = state.list.length;
+    const pendingUnfollow = toUnfollow().length;
     $('pending').textContent = c.pending;
     $('keep').textContent = c.keep;
     $('remove').textContent = c.remove;
     $('later').textContent = c.later;
+    $('unfollowedCount').textContent = state.list.filter(u => state.unfollowed[u]).length;
+    $('toUnfollow').textContent = pendingUnfollow;
     $('bar').style.width = total ? `${((total - c.pending) / total) * 100}%` : '0';
+
+    if (mode === 'unfollow' && !total) mode = 'review';
+    const inUnfollow = mode === 'unfollow';
+    $('unfollowChip').hidden = inUnfollow || !pendingUnfollow;
+    $('unfollow').hidden = !inUnfollow;
+    $('ufActions').hidden = true;
+    if (inUnfollow) {
+      ['welcome', 'review', 'done', 'actions'].forEach(id => { $(id).hidden = true; });
+      renderUnfollow();
+      if ($('listDlg').open) renderList();
+      return;
+    }
 
     const u = current();
     $('welcome').hidden = total > 0;
     $('review').hidden = !u;
     $('done').hidden = !total || !!u;
     $('actions').hidden = !total;
+    $('startUnfollowBtn').hidden = !pendingUnfollow;
+    $('startUnfollowBtn').textContent = `✂ Empezar a dejar de seguir (${pendingUnfollow})`;
     document.querySelectorAll('.act[data-d]').forEach(b => { b.disabled = !u; });
     $('undoBtn').disabled = !state.history.length;
 
@@ -363,6 +545,16 @@
   // Atajos de teclado (útil en ordenador)
   document.addEventListener('keydown', e => {
     if (document.querySelector('dialog[open]') || e.target.matches('input,textarea,select')) return;
+    if (mode === 'unfollow') {
+      if (e.key === 'Enter' || e.key === 'o') { if (!$('ufWork').hidden) $('ufOpen').click(); }
+      else if (e.key === 'h' || e.key === 'ArrowRight') ufMark('done');
+      else if (e.key === 's' || e.key === 'ArrowDown') ufSkip();
+      else if (e.key === 'z' || e.key === 'Backspace') ufUndo();
+      else if (e.key === 'Escape') exitUnfollow();
+      else return;
+      e.preventDefault();
+      return;
+    }
     if (e.key === 'ArrowRight' || e.key === 'k') decide('keep');
     else if (e.key === 'ArrowLeft' || e.key === 'x') decide('remove');
     else if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'l') decide('later');
@@ -410,7 +602,8 @@
 
   // Exportar
   function toCsv() {
-    const rows = [['username', 'decision', 'url'], ...state.list.map(u => [u, state.decisions[u] || 'pending', profileUrl(u)])];
+    const rows = [['username', 'decision', 'unfollowed', 'url'],
+      ...state.list.map(u => [u, state.decisions[u] || 'pending', state.unfollowed[u] ? 'yes' : 'no', profileUrl(u)])];
     return '﻿' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
   }
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
@@ -457,15 +650,16 @@
       const file = new File([toCsv()], `instagram-review-${stamp()}.csv`, { type: 'text/csv' });
       try { await navigator.share({ files: [file], title: 'Instagram Review' }); } catch (_) {}
     } else if (kind === 'copy-remove') {
-      const list = state.list.filter(u => state.decisions[u] === 'remove');
+      const list = state.list.filter(u => state.decisions[u] === 'remove' && !state.unfollowed[u]);
       if (!list.length) { toast('No hay perfiles marcados “Eliminar”'); return; }
       toast(await copyText(list.map(u => `@${u}`).join('\n')) ? `Copiados ${list.length} usuarios` : 'No se pudo copiar');
     } else if (kind === 'backup') {
-      const data = { app: 'instagram-review-lite', version: 1, exportedAt: new Date().toISOString(), list: state.list, decisions: state.decisions };
+      const data = { app: 'instagram-review-lite', version: 2, exportedAt: new Date().toISOString(), list: state.list, decisions: state.decisions, unfollowed: state.unfollowed };
       download(JSON.stringify(data, null, 2), `instagram-review-backup-${stamp()}.json`, 'application/json');
     } else if (kind === 'reset') {
       if (!confirm('¿Borrar la lista y todas las decisiones? Esta acción no se puede deshacer.')) return;
-      state = { list: [], decisions: {}, history: [] };
+      state = emptyState();
+      mode = 'review';
       save();
       render();
       $('exportDlg').close();
@@ -488,7 +682,8 @@
     const q = normalize($('search').value) || $('search').value.trim().toLowerCase().replace(/^@/, '');
     const items = state.list.filter(u => {
       const d = state.decisions[u] || 'pending';
-      return (filter === 'all' || filter === d) && (!q || u.includes(q));
+      const match = filter === 'all' || filter === d || (filter === 'unfollowed' && state.unfollowed[u]);
+      return match && (!q || u.includes(q));
     });
     const ul = $('list');
     ul.textContent = '';
@@ -506,7 +701,14 @@
       sel.value = state.decisions[u] || 'pending';
       sel.dataset.v = sel.value;
       sel.dataset.u = u;
-      li.append(a, sel);
+      li.append(a);
+      if (state.unfollowed[u]) {
+        const tag = document.createElement('span');
+        tag.className = 'unf';
+        tag.textContent = 'dejado';
+        li.append(tag);
+      }
+      li.append(sel);
       frag.appendChild(li);
     }
     ul.appendChild(frag);
