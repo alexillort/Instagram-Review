@@ -64,7 +64,17 @@
           <div class="frame-loading" id="frameLoading">Cargando perfil…</div>
         </div>
         <p class="frame-note">¿No se ve? La cuenta puede ser privada, no existir o haber cambiado de nombre.</p>
-        <a id="openLink" class="btn wide" href="#" target="_blank" rel="noopener noreferrer">Abrir en Instagram ↗</a>
+        <div class="card-btns">
+          <a id="openLink" class="btn" href="#" target="_blank" rel="noopener noreferrer">Ver en Instagram ↗</a>
+          <a id="unfollowLink" class="btn unf-btn" href="#" target="_blank" rel="noopener noreferrer">✂ Dejar de seguir</a>
+        </div>
+        <div id="confirmUnf" class="confirm-unf" hidden>
+          <p>En Instagram pulsa <b>Siguiendo → Dejar de seguir</b>.<br />¿Ya dejaste de seguir a <b id="confirmUser"></b>?</p>
+          <div class="row">
+            <button id="confirmNo" class="btn">Aún no</button>
+            <button id="confirmYes" class="btn yes">✓ Sí, hecho</button>
+          </div>
+        </div>
         <p class="tip">Desliza la tarjeta → mantener · ← eliminar · ↑ después</p>
       </article>
     </section>

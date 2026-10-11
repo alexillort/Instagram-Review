@@ -189,6 +189,18 @@ fieldset.mode label { display: flex; gap: 8px; align-items: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 
+/* Botones de la tarjeta de perfil */
+.card-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.card-btns .btn { padding: 12px 8px; font-size: 15px; }
+.unf-btn { color: #e3c2ff; background: #1d1424; border-color: #4a2d5c; }
+.confirm-unf {
+  margin-top: 10px; padding: 12px; border-radius: 14px;
+  background: #1d1424; border: 1px solid #4a2d5c;
+}
+.confirm-unf p { margin: 0 0 10px; font-size: 14px; color: #e3c2ff; }
+.confirm-unf .btn { min-height: 44px; }
+.confirm-unf .btn.yes { background: var(--keep); border-color: var(--keep); color: #111; }
+
 /* Modo dejar de seguir */
 .chip-btn {
   margin-top: 10px; width: 100%; min-height: 44px; border-radius: 12px;

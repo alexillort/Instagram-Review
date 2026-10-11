@@ -198,6 +198,10 @@
     if (!last) return;
     if (last.prev) state.decisions[last.u] = last.prev;
     else delete state.decisions[last.u];
+    if (last.unf) {
+      delete state.unfollowed[last.u];
+      state.uf.batch = Math.max(0, state.uf.batch - 1);
+    }
     // Coloca el perfil deshecho al principio de los pendientes para verlo de nuevo
     const i = state.list.indexOf(last.u);
     if (i !== -1 && !last.prev) {
@@ -325,17 +329,28 @@
     render();
   }
 
+  // Registra que el usuario dejó de seguir a `u` y aplica la pausa por tandas.
+  function registerUnfollow(u) {
+    state.unfollowed[u] = Date.now();
+    state.uf.batch++;
+    if (state.uf.batch >= UNFOLLOW_BATCH) {
+      state.uf.batch = 0;
+      state.uf.pauseUntil = Date.now() + UNFOLLOW_PAUSE_MIN * 60 * 1000;
+      if (mode === 'review') toast(`Llevas ${UNFOLLOW_BATCH} seguidas: descansa ${UNFOLLOW_PAUSE_MIN} min para evitar bloqueos`);
+    }
+  }
+
+  const pauseLeft = () => {
+    const s = Math.max(0, Math.ceil((state.uf.pauseUntil - Date.now()) / 1000));
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+
   function ufMark(action) {
     const u = ufCurrent();
     if (!u || state.uf.pauseUntil > Date.now()) return;
     ufHistory.push({ u, action });
     if (action === 'done') {
-      state.unfollowed[u] = Date.now();
-      state.uf.batch++;
-      if (state.uf.batch >= UNFOLLOW_BATCH) {
-        state.uf.batch = 0;
-        state.uf.pauseUntil = Date.now() + UNFOLLOW_PAUSE_MIN * 60 * 1000;
-      }
+      registerUnfollow(u);
     } else if (action === 'keep') {
       state.decisions[u] = 'keep';
       toast(`@${u} pasa a “Mantener”`);
@@ -437,6 +452,57 @@
     }
   });
 
+  // ---------- Botón "Dejar de seguir" en la tarjeta de perfil ----------
+  // Abre el perfil en Instagram (donde se pulsa el botón real) y, al volver,
+  // pide confirmación para registrarlo y pasar al siguiente perfil.
+  let confirmFor = null;
+
+  $('unfollowLink').addEventListener('click', e => {
+    const u = current();
+    if (!u) { e.preventDefault(); return; }
+    if (state.uf.pauseUntil > Date.now()) {
+      if (!confirm(`Pausa recomendada: quedan ${pauseLeft()} min para evitar que Instagram te bloquee temporalmente. ¿Continuar igualmente?`)) {
+        e.preventDefault();
+        return;
+      }
+      state.uf.pauseUntil = 0;
+      save();
+    }
+    confirmFor = u;
+    render();
+    showConfirm();
+  });
+
+  function showConfirm() {
+    const el = $('confirmUnf');
+    if (el.hidden) return;
+    // Deja la confirmación por encima de la barra inferior fija
+    const bar = $('actions').getBoundingClientRect().height || 0;
+    const r = el.getBoundingClientRect();
+    if (r.bottom > window.innerHeight - bar - 8) window.scrollBy({ top: r.bottom - (window.innerHeight - bar - 16), behavior: 'smooth' });
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && mode === 'review' && confirmFor && confirmFor === current()) showConfirm();
+  });
+
+  $('confirmYes').addEventListener('click', () => {
+    const u = current();
+    if (!u || confirmFor !== u) return;
+    confirmFor = null;
+    state.history.push({ u, prev: null, unf: true });
+    if (state.history.length > MAX_HISTORY) state.history.shift();
+    state.decisions[u] = 'remove';
+    registerUnfollow(u);
+    save();
+    flyOut('remove');
+  });
+
+  $('confirmNo').addEventListener('click', () => {
+    confirmFor = null;
+    render();
+  });
+
   function render() {
     const c = counts();
     const total = state.list.length;
@@ -475,6 +541,10 @@
       $('username').textContent = `@${u}`;
       $('position').textContent = `${total - c.pending + 1} de ${total}`;
       $('openLink').href = profileUrl(u);
+      $('unfollowLink').href = profileUrl(u);
+      if (confirmFor && confirmFor !== u) confirmFor = null;
+      $('confirmUnf').hidden = confirmFor !== u;
+      $('confirmUser').textContent = `@${u}`;
       showProfile(u, nextAfter(u));
       resetCard();
     } else if (total) {

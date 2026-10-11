@@ -13,8 +13,9 @@ Hay dos versiones:
 
 ## Versión web / móvil (`docs/`)
 
-Instagram no permite incrustarse dentro de otra web, así que la versión web muestra **un perfil a la vez**: tocas *Abrir en Instagram* (en el móvil se abre la app), vuelves y decides.
+Muestra **un perfil a la vez** dentro de la tarjeta usando el *embed* oficial de Instagram (foto, seguidores, nº de publicaciones y las 6 últimas publicaciones; Instagram no permite mostrar más en el embed). El siguiente perfil se precarga para que el cambio sea instantáneo. Si quieres ver más (historias, bio completa, todas las publicaciones), toca *Abrir en Instagram*.
 
+- **Modo “Dejar de seguir”** (opcional): te lleva por las cuentas marcadas *Eliminar* una a una. Tocas *Abrir en Instagram*, pulsas **Siguiendo → Dejar de seguir** tú mismo, vuelves y marcas **Hecho**. También puedes *Saltar* o pasarla a *Mantener*. Propone una pausa de 10 min cada 20 cuentas para evitar bloqueos temporales de Instagram (se puede saltar). Ajustable en `UNFOLLOW_BATCH` / `UNFOLLOW_PAUSE_MIN` de `docs/app.js`.
 - Desliza la tarjeta: **→ mantener**, **← eliminar**, **↑ después**. También hay botones y **Deshacer**.
 - Importa `.csv`, `.txt`, `.json` o `.html`, o pega usuarios/URLs a mano.
   - Acepta directamente `following.json` / `following.html` de la *descarga de tus datos* de Instagram.
