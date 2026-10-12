@@ -189,17 +189,7 @@ fieldset.mode label { display: flex; gap: 8px; align-items: center; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
 
-/* Botones de la tarjeta de perfil */
-.card-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.card-btns .btn { padding: 12px 8px; font-size: 15px; }
-.unf-btn { color: #e3c2ff; background: #1d1424; border-color: #4a2d5c; }
-.confirm-unf {
-  margin-top: 10px; padding: 12px; border-radius: 14px;
-  background: #1d1424; border: 1px solid #4a2d5c;
-}
-.confirm-unf p { margin: 0 0 10px; font-size: 14px; color: #e3c2ff; }
-.confirm-unf .btn { min-height: 44px; }
-.confirm-unf .btn.yes { background: var(--keep); border-color: var(--keep); color: #111; }
+#openLink { margin-top: 10px; }
 
 /* Modo dejar de seguir */
 .chip-btn {
@@ -222,6 +212,22 @@ fieldset.mode label { display: flex; gap: 8px; align-items: center; }
 .act.done.pulse { animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(52, 199, 89, .35); } }
 .list .unf { flex: none; font-size: 11px; color: #bf5af2; border: 1px solid #4a2d5c; border-radius: 6px; padding: 2px 6px; }
+
+/* App Android: el perfil real de Instagram se dibuja encima de .frame-wrap / .uf-frame */
+body:not(.native) .native-only { display: none !important; }
+body.native .web-only { display: none !important; }
+body.native { height: 100dvh; min-height: 0; overflow: hidden; }
+body.native main { min-height: 0; padding: 8px 8px calc(96px + var(--safe-b)); }
+body.native #review, body.native #unfollow { min-height: 0; align-items: stretch; }
+body.native .card { display: flex; flex-direction: column; max-width: none; padding: 8px; touch-action: auto; }
+body.native .card-head { padding-bottom: 8px; }
+body.native .frame-wrap { flex: 1; height: auto !important; min-height: 160px; background: #000; }
+body.native .ig-frame, body.native .frame-loading { display: none; }
+body.native #ufWork { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+body.native .username.big { font-size: 18px; margin: 0 0 6px; }
+.uf-frame { flex: 1; min-height: 160px; border-radius: 12px; background: #000; }
+.uf-hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+body.native .uf-meta { margin-top: 6px; }
 
 @media (prefers-reduced-motion: reduce) {
   .act.done.pulse { animation: none; }

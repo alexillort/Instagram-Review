@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instagram Review Lite</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Instagram Review <span>Lite</span></h1>
+      <p>Revisa tres perfiles en paralelo. Tú decides; la app solo organiza.</p>
+    </div>
+    <div class="actions">
+      <label class="button primary">Importar CSV/TXT<input id="file" type="file" accept=".csv,.txt,.json" hidden /></label>
+      <button id="exportBtn" class="button">Exportar</button>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div><strong id="reviewed">0</strong><small>revisados</small></div>
+    <div><strong id="pending">0</strong><small>pendientes</small></div>
+    <div><strong id="keep">0</strong><small>mantener</small></div>
+    <div><strong id="remove">0</strong><small>eliminar</small></div>
+    <div><strong id="later">0</strong><small>después</small></div>
+    <div class="hint">CSV: una columna <code>username</code>, URLs o @usuarios.</div>
+  </section>
+
+  <footer>
+    <div class="slotbar" data-slot="0"><span id="u0">—</span><div><button data-d="keep">✓ Mantener</button><button data-d="remove">✕ Eliminar</button><button data-d="later">◷ Después</button><button data-r>↻</button></div></div>
+    <div class="slotbar" data-slot="1"><span id="u1">—</span><div><button data-d="keep">✓ Mantener</button><button data-d="remove">✕ Eliminar</button><button data-d="later">◷ Después</button><button data-r>↻</button></div></div>
+    <div class="slotbar" data-slot="2"><span id="u2">—</span><div><button data-d="keep">✓ Mantener</button><button data-d="remove">✕ Eliminar</button><button data-d="later">◷ Después</button><button data-r>↻</button></div></div>
+  </footer>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

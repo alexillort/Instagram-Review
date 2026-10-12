@@ -190,6 +190,7 @@
     if (state.history.length > MAX_HISTORY) state.history.shift();
     state.decisions[u] = decision;
     save();
+    if (native && decision === 'remove') native.checkFollow(u);
     flyOut(decision);
   }
 
@@ -285,6 +286,7 @@
   }));
 
   $('reloadBtn').addEventListener('click', () => {
+    if (window.IGNative) { window.IGNative.reload(); return; }
     const u = active.user;
     if (!u) return;
     active.user = null;
@@ -339,11 +341,6 @@
       if (mode === 'review') toast(`Llevas ${UNFOLLOW_BATCH} seguidas: descansa ${UNFOLLOW_PAUSE_MIN} min para evitar bloqueos`);
     }
   }
-
-  const pauseLeft = () => {
-    const s = Math.max(0, Math.ceil((state.uf.pauseUntil - Date.now()) / 1000));
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-  };
 
   function ufMark(action) {
     const u = ufCurrent();
@@ -452,56 +449,53 @@
     }
   });
 
-  // ---------- Botón "Dejar de seguir" en la tarjeta de perfil ----------
-  // Abre el perfil en Instagram (donde se pulsa el botón real) y, al volver,
-  // pide confirmación para registrarlo y pasar al siguiente perfil.
-  let confirmFor = null;
+  // ---------- App Android (perfil real de Instagram) ----------
+  // Dentro de la app Android existe window.IGNative: un navegador nativo con la
+  // página completa de Instagram (y tu sesión) que se coloca encima de la tarjeta.
+  // Así se ven todas las publicaciones y funciona el botón real "Dejar de seguir".
+  const native = window.IGNative || null;
+  if (native) document.body.classList.add('native');
 
-  $('unfollowLink').addEventListener('click', e => {
-    const u = current();
-    if (!u) { e.preventDefault(); return; }
-    if (state.uf.pauseUntil > Date.now()) {
-      if (!confirm(`Pausa recomendada: quedan ${pauseLeft()} min para evitar que Instagram te bloquee temporalmente. ¿Continuar igualmente?`)) {
-        e.preventDefault();
-        return;
-      }
-      state.uf.pauseUntil = 0;
-      save();
-    }
-    confirmFor = u;
-    render();
-    showConfirm();
-  });
-
-  function showConfirm() {
-    const el = $('confirmUnf');
-    if (el.hidden) return;
-    // Deja la confirmación por encima de la barra inferior fija
-    const bar = $('actions').getBoundingClientRect().height || 0;
-    const r = el.getBoundingClientRect();
-    if (r.bottom > window.innerHeight - bar - 8) window.scrollBy({ top: r.bottom - (window.innerHeight - bar - 16), behavior: 'smooth' });
+  let nativeRaf = 0;
+  function syncNative() {
+    if (!native) return;
+    cancelAnimationFrame(nativeRaf);
+    nativeRaf = requestAnimationFrame(() => {
+      let slot = null;
+      let user = null;
+      if (mode === 'unfollow' && !$('unfollow').hidden && !$('ufWork').hidden) { slot = $('ufFrame'); user = ufCurrent(); }
+      else if (mode === 'review' && !$('review').hidden) { slot = $('frameWrap'); user = current(); }
+      const r = slot && slot.getBoundingClientRect();
+      if (!user || !r || r.width < 10 || r.height < 10 || document.querySelector('dialog[open]')) { native.hide(); return; }
+      native.show(user, r.left, r.top, r.width, r.height);
+    });
   }
+  window.addEventListener('resize', syncNative);
+  if (native && 'ResizeObserver' in window) {
+    const ro = new ResizeObserver(syncNative);
+    ro.observe($('frameWrap'));
+    ro.observe($('ufFrame'));
+  }
+  document.querySelectorAll('dialog').forEach(d => d.addEventListener('close', syncNative));
 
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && mode === 'review' && confirmFor && confirmFor === current()) showConfirm();
-  });
+  // Al marcar "Eliminar", la app mira en la página de Instagram si ya no lo sigues
+  window.onIgFollowState = (u, s) => {
+    if (s === 'not_following' && state.decisions[u] === 'remove' && !state.unfollowed[u]) {
+      registerUnfollow(u);
+      save();
+      render();
+      toast(`@${u}: dejado de seguir ✓`);
+    }
+  };
 
-  $('confirmYes').addEventListener('click', () => {
-    const u = current();
-    if (!u || confirmFor !== u) return;
-    confirmFor = null;
-    state.history.push({ u, prev: null, unf: true });
-    if (state.history.length > MAX_HISTORY) state.history.shift();
-    state.decisions[u] = 'remove';
-    registerUnfollow(u);
-    save();
-    flyOut('remove');
-  });
-
-  $('confirmNo').addEventListener('click', () => {
-    confirmFor = null;
-    render();
-  });
+  // Botón "atrás" de Android: cierra diálogos o sale del modo antes de cerrar la app
+  window.onNativeBack = () => {
+    const dlg = document.querySelector('dialog[open]');
+    if (dlg) { dlg.close(); return true; }
+    if (mode === 'unfollow') { exitUnfollow(); return true; }
+    return false;
+  };
+  $('backBtn').addEventListener('click', () => { if (native) native.back(); });
 
   function render() {
     const c = counts();
@@ -524,6 +518,7 @@
       ['welcome', 'review', 'done', 'actions'].forEach(id => { $(id).hidden = true; });
       renderUnfollow();
       if ($('listDlg').open) renderList();
+      syncNative();
       return;
     }
 
@@ -541,10 +536,6 @@
       $('username').textContent = `@${u}`;
       $('position').textContent = `${total - c.pending + 1} de ${total}`;
       $('openLink').href = profileUrl(u);
-      $('unfollowLink').href = profileUrl(u);
-      if (confirmFor && confirmFor !== u) confirmFor = null;
-      $('confirmUnf').hidden = confirmFor !== u;
-      $('confirmUser').textContent = `@${u}`;
       showProfile(u, nextAfter(u));
       resetCard();
     } else if (total) {
@@ -552,6 +543,7 @@
       $('reviewLaterBtn').hidden = !c.later;
     }
     if ($('listDlg').open) renderList();
+    syncNative();
   }
 
   function resetCard() {
@@ -562,6 +554,7 @@
   }
 
   function flyOut(decision) {
+    if (native) { setTimeout(render, 120); return; }
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduce || $('review').hidden) { render(); return; }
     const dx = decision === 'keep' ? 1 : decision === 'remove' ? -1 : 0;
@@ -640,6 +633,7 @@
     if (typeof dlg.showModal === 'function') dlg.showModal();
     else dlg.setAttribute('open', '');
     if (id === 'listDlg') renderList();
+    syncNative();
   }
   document.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openDialog(b.dataset.open)));
   $('importBtn').addEventListener('click', () => openDialog('importDlg'));
@@ -679,6 +673,11 @@
   const stamp = () => new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
 
   function download(content, filename, type) {
+    if (native) {
+      const where = native.saveFile(filename, type.split(';')[0], content);
+      toast(where ? `Guardado en ${where}` : 'No se pudo guardar el archivo');
+      return;
+    }
     const url = URL.createObjectURL(new Blob([content], { type }));
     const a = document.createElement('a');
     a.href = url;
@@ -800,6 +799,7 @@
   // ---------- Toast ----------
   let toastTimer;
   function toast(msg) {
+    if (native) { native.toast(msg); return; }
     const el = $('toast');
     el.textContent = msg;
     el.classList.add('show');
@@ -815,7 +815,7 @@
   window.addEventListener('storage', e => { if (e.key === STORE_KEY) { load(); render(); } });
 
   // Service worker: solo funciona servido por http(s) (GitHub Pages), no desde file://
-  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  if (!native && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 })();

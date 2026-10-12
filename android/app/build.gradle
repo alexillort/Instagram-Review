@@ -1,0 +1,58 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.igreview.lite'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'com.igreview.lite'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Clave fija para que cada APK nuevo se instale encima del anterior sin desinstalar.
+    // Es una app personal que se instala a mano (no va a Google Play).
+    signingConfigs {
+        shared {
+            storeFile file('igreview.keystore')
+            storePassword 'igreview'
+            keyAlias 'igreview'
+            keyPassword 'igreview'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.shared
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.shared
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // La interfaz es la misma versión web de ../docs, empaquetada dentro del APK.
+    sourceSets {
+        main {
+            assets.srcDirs = ["$rootDir/../docs"]
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}
