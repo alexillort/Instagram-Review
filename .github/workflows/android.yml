@@ -1,0 +1,53 @@
+# Compila la app Android y la publica en Releases ("App Android") cada vez que
+# cambian android/ o docs/. Desde el móvil: Releases → IGReviewLite.apk
+name: App Android
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', 'docs/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Compilar APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon
+
+      - name: Renombrar
+        run: cp android/app/build/outputs/apk/release/app-release.apk IGReviewLite.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IGReviewLite-apk
+          path: IGReviewLite.apk
+
+      - name: Publicar en Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: App Android (última versión)
+          body: |
+            Descarga **IGReviewLite.apk** desde el móvil y ábrelo para instalarlo
+            (Android pedirá permitir "instalar apps de origen desconocido").
+            Compilado desde ${{ github.sha }}.
+          files: IGReviewLite.apk
+          make_latest: true

@@ -6,8 +6,31 @@ Hay dos versiones:
 
 | Versión | Carpeta | Dónde funciona |
 |---|---|---|
-| **Web / móvil (PWA)** | `docs/` | Cualquier navegador, GitHub Pages, instalable en el móvil |
+| **App Android** ⭐ | `android/` (+ `docs/`) | Android. Instagram real dentro de la tarjeta: todas las publicaciones y el botón real “Dejar de seguir” |
+| **Web / móvil (PWA)** | `docs/` | Cualquier navegador, GitHub Pages, instalable en el móvil (vista previa de 6 publicaciones) |
 | Escritorio (Electron) | raíz (`main.js`…) | Windows/macOS/Linux, 3 perfiles en paralelo |
+
+---
+
+## App Android (`android/`)
+
+Es la misma interfaz que la versión web, pero la tarjeta muestra **la página real de Instagram** como un navegador: inicias sesión una vez dentro de la app, ves todas las publicaciones, puedes entrar en posts, y **dejas de seguir con el botón de Instagram** (Siguiendo → Dejar de seguir) sin salir de la app.
+
+- Al pulsar **Eliminar**, la app mira el botón del perfil: si ya pone “Seguir”, lo marca automáticamente como *dejado de seguir*.
+- ← vuelve atrás dentro de Instagram; ↻ recarga. El botón atrás de Android cierra menús y sale del modo.
+- Exportar guarda los archivos en **Descargas**.
+
+### Conseguir el APK (sin instalar nada en el ordenador)
+1. Sube el proyecto a GitHub (ver *Publicar en GitHub Pages* más abajo).
+2. GitHub lo compila solo (pestaña **Actions** → *App Android*, tarda ~3–5 min).
+3. En el móvil abre `https://github.com/TU-USUARIO/NOMBRE-REPO/releases` → **App Android (última versión)** → descarga **IGReviewLite.apk** y ábrelo.
+4. Android pedirá permitir *instalar apps de origen desconocido* para tu navegador: acéptalo solo para esto.
+
+Cada vez que subas cambios a `docs/` o `android/` se genera un APK nuevo que se instala encima del anterior (conserva tus datos).
+
+> La clave de firma (`android/app/igreview.keystore`) está en el repo para que las actualizaciones se instalen encima. Es solo para uso personal; no la uses para publicar en Google Play.
+
+También puedes compilarlo tú con Android Studio: *Open* → carpeta `android/` → *Run*.
 
 ---
 

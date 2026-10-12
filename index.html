@@ -56,6 +56,7 @@
             <div class="username" id="username">@—</div>
             <div class="position" id="position"></div>
           </div>
+          <button id="backBtn" class="icon-btn small native-only" title="Atrás" aria-label="Atrás">←</button>
           <button id="reloadBtn" class="icon-btn small" title="Recargar perfil" aria-label="Recargar perfil">↻</button>
         </div>
         <div class="frame-wrap" id="frameWrap">
@@ -63,19 +64,9 @@
           <iframe class="ig-frame" title="Perfil de Instagram (siguiente)" scrolling="no" allowtransparency="true" tabindex="-1" aria-hidden="true"></iframe>
           <div class="frame-loading" id="frameLoading">Cargando perfil…</div>
         </div>
-        <p class="frame-note">¿No se ve? La cuenta puede ser privada, no existir o haber cambiado de nombre.</p>
-        <div class="card-btns">
-          <a id="openLink" class="btn" href="#" target="_blank" rel="noopener noreferrer">Ver en Instagram ↗</a>
-          <a id="unfollowLink" class="btn unf-btn" href="#" target="_blank" rel="noopener noreferrer">✂ Dejar de seguir</a>
-        </div>
-        <div id="confirmUnf" class="confirm-unf" hidden>
-          <p>En Instagram pulsa <b>Siguiendo → Dejar de seguir</b>.<br />¿Ya dejaste de seguir a <b id="confirmUser"></b>?</p>
-          <div class="row">
-            <button id="confirmNo" class="btn">Aún no</button>
-            <button id="confirmYes" class="btn yes">✓ Sí, hecho</button>
-          </div>
-        </div>
-        <p class="tip">Desliza la tarjeta → mantener · ← eliminar · ↑ después</p>
+        <p class="frame-note web-only">¿No se ve? La cuenta puede ser privada, no existir o haber cambiado de nombre.</p>
+        <a id="openLink" class="btn wide web-only" href="#" target="_blank" rel="noopener noreferrer">Ver en Instagram ↗</a>
+        <p class="tip web-only">Desliza la tarjeta → mantener · ← eliminar · ↑ después</p>
       </article>
     </section>
 
@@ -102,12 +93,14 @@
 
         <div id="ufWork">
           <div class="username big" id="ufUser">@—</div>
-          <ol class="uf-steps">
+          <div id="ufFrame" class="uf-frame native-only"></div>
+          <p class="uf-hint native-only">Pulsa <b>Siguiendo → Dejar de seguir</b> en el perfil y luego <b>Hecho</b>.</p>
+          <ol class="uf-steps web-only">
             <li>Toca <b>Abrir en Instagram</b>.</li>
             <li>Pulsa <b>Siguiendo</b> → <b>Dejar de seguir</b>.</li>
             <li>Vuelve aquí y toca <b>Hecho</b>.</li>
           </ol>
-          <a id="ufOpen" class="btn primary wide" href="#" target="_blank" rel="noopener noreferrer">Abrir en Instagram ↗</a>
+          <a id="ufOpen" class="btn primary wide web-only" href="#" target="_blank" rel="noopener noreferrer">Abrir en Instagram ↗</a>
           <div class="uf-meta"><span id="ufBatch"></span><span id="ufToday"></span></div>
         </div>
 

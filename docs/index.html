@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b0b0c" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="IG Review" />
+  <meta name="description" content="Revisa a quién sigues en Instagram, uno a uno, desde el móvil." />
+  <title>Instagram Review Lite</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>IG Review <span>Lite</span></h1>
+    <nav>
+      <button id="listBtn" class="icon-btn" title="Ver lista" aria-label="Ver lista">☰</button>
+      <button id="importBtn" class="icon-btn" title="Importar" aria-label="Importar">＋</button>
+      <button id="exportBtn" class="icon-btn" title="Exportar" aria-label="Exportar">⇩</button>
+    </nav>
+  </header>
+
+  <section class="progress" aria-label="Progreso">
+    <div class="bar"><div id="bar"></div></div>
+    <div class="chips">
+      <span><b id="pending">0</b> pendientes</span>
+      <span class="c-keep"><b id="keep">0</b> mantener</span>
+      <span class="c-remove"><b id="remove">0</b> eliminar</span>
+      <span class="c-later"><b id="later">0</b> después</span>
+      <span class="c-unf"><b id="unfollowedCount">0</b> dejados de seguir</span>
+    </div>
+    <button id="unfollowChip" class="chip-btn" hidden>✂ Dejar de seguir · <b id="toUnfollow">0</b> pendientes</button>
+  </section>
+
+  <main id="main">
+    <!-- Sin lista -->
+    <section id="welcome" class="panel" hidden>
+      <div class="big-emoji">📋</div>
+      <h2>Empieza importando tu lista</h2>
+      <p>Sube un CSV/TXT/JSON con usuarios, el archivo <code>following.json</code> o <code>following.html</code> de la descarga de datos de Instagram, o pega los usuarios a mano.</p>
+      <button class="btn primary wide" data-open="importDlg">Importar lista</button>
+    </section>
+
+    <!-- Revisando -->
+    <section id="review" hidden>
+      <article id="card" class="card">
+        <div class="stamp" id="stamp"></div>
+        <div class="card-head">
+          <div class="who">
+            <div class="username" id="username">@—</div>
+            <div class="position" id="position"></div>
+          </div>
+          <button id="backBtn" class="icon-btn small native-only" title="Atrás" aria-label="Atrás">←</button>
+          <button id="reloadBtn" class="icon-btn small" title="Recargar perfil" aria-label="Recargar perfil">↻</button>
+        </div>
+        <div class="frame-wrap" id="frameWrap">
+          <iframe class="ig-frame" title="Perfil de Instagram" scrolling="no" allowtransparency="true"></iframe>
+          <iframe class="ig-frame" title="Perfil de Instagram (siguiente)" scrolling="no" allowtransparency="true" tabindex="-1" aria-hidden="true"></iframe>
+          <div class="frame-loading" id="frameLoading">Cargando perfil…</div>
+        </div>
+        <p class="frame-note web-only">¿No se ve? La cuenta puede ser privada, no existir o haber cambiado de nombre.</p>
+        <a id="openLink" class="btn wide web-only" href="#" target="_blank" rel="noopener noreferrer">Ver en Instagram ↗</a>
+        <p class="tip web-only">Desliza la tarjeta → mantener · ← eliminar · ↑ después</p>
+      </article>
+    </section>
+
+    <!-- Terminado -->
+    <section id="done" class="panel" hidden>
+      <div class="big-emoji">✅</div>
+      <h2>¡Revisión completada!</h2>
+      <p id="doneText"></p>
+      <button id="startUnfollowBtn" class="btn primary wide">✂ Empezar a dejar de seguir</button>
+      <button id="reviewLaterBtn" class="btn wide">Revisar los marcados “Después”</button>
+      <button class="btn wide" data-open="exportDlg">Exportar resultados</button>
+    </section>
+
+    <!-- Modo dejar de seguir -->
+    <section id="unfollow" hidden>
+      <article class="card uf-card">
+        <div class="card-head">
+          <div class="who">
+            <div class="uf-title">✂ Dejar de seguir</div>
+            <div class="position" id="ufPos"></div>
+          </div>
+          <button id="ufExit" class="icon-btn small" title="Salir del modo" aria-label="Salir del modo dejar de seguir">✕</button>
+        </div>
+
+        <div id="ufWork">
+          <div class="username big" id="ufUser">@—</div>
+          <div id="ufFrame" class="uf-frame native-only"></div>
+          <p class="uf-hint native-only">Pulsa <b>Siguiendo → Dejar de seguir</b> en el perfil y luego <b>Hecho</b>.</p>
+          <ol class="uf-steps web-only">
+            <li>Toca <b>Abrir en Instagram</b>.</li>
+            <li>Pulsa <b>Siguiendo</b> → <b>Dejar de seguir</b>.</li>
+            <li>Vuelve aquí y toca <b>Hecho</b>.</li>
+          </ol>
+          <a id="ufOpen" class="btn primary wide web-only" href="#" target="_blank" rel="noopener noreferrer">Abrir en Instagram ↗</a>
+          <div class="uf-meta"><span id="ufBatch"></span><span id="ufToday"></span></div>
+        </div>
+
+        <div id="ufPause" class="uf-state" hidden>
+          <div class="big-emoji">⏸</div>
+          <h2>Pausa recomendada</h2>
+          <p class="muted">Has dejado de seguir <b id="ufPauseCount"></b> cuentas seguidas. Instagram puede bloquear temporalmente la acción si se hacen muchas de golpe. Descansa un poco antes de seguir.</p>
+          <div class="countdown" id="ufCountdown">--:--</div>
+          <button id="ufContinue" class="btn wide">Continuar igualmente</button>
+        </div>
+
+        <div id="ufDoneState" class="uf-state" hidden>
+          <div class="big-emoji">🎉</div>
+          <h2>¡No queda nadie por dejar de seguir!</h2>
+          <p class="muted" id="ufDoneText"></p>
+          <button id="ufBack" class="btn primary wide">Volver</button>
+        </div>
+
+        <button id="ufUndo" class="linklike" hidden>↶ Deshacer último</button>
+      </article>
+    </section>
+  </main>
+
+  <footer id="actions" class="actions" hidden>
+    <button class="act remove" data-d="remove" aria-label="Eliminar"><span>✕</span>Eliminar</button>
+    <button class="act later" data-d="later" aria-label="Después"><span>◷</span>Después</button>
+    <button class="act keep" data-d="keep" aria-label="Mantener"><span>✓</span>Mantener</button>
+    <button id="undoBtn" class="act undo" aria-label="Deshacer"><span>↶</span>Deshacer</button>
+  </footer>
+
+  <footer id="ufActions" class="actions uf" hidden>
+    <button id="ufSkip" class="act later" aria-label="Saltar"><span>⏭</span>Saltar</button>
+    <button id="ufKeep" class="act keep" aria-label="Mejor mantener"><span>↩</span>Mantener</button>
+    <button id="ufDoneBtn" class="act done" aria-label="Hecho, ya lo dejé de seguir"><span>✓</span>Hecho</button>
+  </footer>
+
+  <!-- Importar -->
+  <dialog id="importDlg" class="sheet">
+    <form method="dialog" class="sheet-body">
+      <h3>Importar perfiles</h3>
+      <label class="btn primary wide file-btn">Elegir archivo (CSV, TXT, JSON, HTML)
+        <input id="fileInput" type="file" accept=".csv,.txt,.json,.html,.htm,text/*,application/json" hidden />
+      </label>
+      <p class="muted center">o pega usuarios / URLs (uno por línea)</p>
+      <textarea id="pasteInput" rows="6" placeholder="@usuario1&#10;https://instagram.com/usuario2&#10;usuario3"></textarea>
+      <fieldset class="mode">
+        <label><input type="radio" name="mode" value="merge" checked /> Añadir a la lista actual</label>
+        <label><input type="radio" name="mode" value="replace" /> Reemplazar (borra el progreso)</label>
+      </fieldset>
+      <div class="row">
+        <button value="cancel" class="btn">Cancelar</button>
+        <button id="pasteImportBtn" value="default" class="btn primary">Importar texto</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Exportar -->
+  <dialog id="exportDlg" class="sheet">
+    <form method="dialog" class="sheet-body">
+      <h3>Exportar</h3>
+      <button type="button" class="btn wide" data-export="csv">Descargar CSV completo</button>
+      <button type="button" class="btn wide" data-export="share" id="shareBtn" hidden>Compartir CSV…</button>
+      <button type="button" class="btn wide" data-export="copy-remove">Copiar los que faltan por dejar de seguir</button>
+      <button type="button" class="btn wide" data-export="backup">Descargar copia de seguridad (JSON)</button>
+      <p class="muted">La copia de seguridad se puede importar en otro dispositivo para continuar donde lo dejaste. El CSV exportado también conserva las decisiones al reimportarlo.</p>
+      <hr />
+      <button type="button" class="btn wide danger" data-export="reset">Borrar todo</button>
+      <div class="row"><button value="cancel" class="btn">Cerrar</button></div>
+    </form>
+  </dialog>
+
+  <!-- Lista -->
+  <dialog id="listDlg" class="sheet tall">
+    <form method="dialog" class="sheet-body">
+      <div class="row between"><h3>Lista</h3><button value="cancel" class="icon-btn" aria-label="Cerrar">✕</button></div>
+      <input id="search" type="search" placeholder="Buscar usuario…" autocomplete="off" />
+      <div class="filters" id="filters">
+        <button type="button" data-f="all" class="on">Todos</button>
+        <button type="button" data-f="pending">Pendientes</button>
+        <button type="button" data-f="keep">Mantener</button>
+        <button type="button" data-f="remove">Eliminar</button>
+        <button type="button" data-f="later">Después</button>
+        <button type="button" data-f="unfollowed">Dejados</button>
+      </div>
+      <ul id="list" class="list"></ul>
+      <p id="listMore" class="muted center"></p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

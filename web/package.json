@@ -1,0 +1,12 @@
+{
+  "name": "instagram-review-lite",
+  "version": "0.1.0",
+  "description": "Local desktop MVP to review Instagram followings in parallel.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  }
+}
