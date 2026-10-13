@@ -4,7 +4,6 @@
   const STORE_KEY = 'instagram-review-lite:v1';
   const DECISIONS = ['keep', 'remove', 'later'];
   const LABELS = { keep: 'Mantener', remove: 'Eliminar', later: 'Después', pending: 'Pendiente' };
-  const COLORS = { keep: 'var(--keep)', remove: 'var(--remove)', later: 'var(--later)' };
   const DECISION_ALIASES = { keep: 'keep', mantener: 'keep', remove: 'remove', eliminar: 'remove', later: 'later', 'después': 'later', despues: 'later' };
   const RESERVED = new Set(['p', 'reel', 'reels', 'explore', 'accounts', 'stories', 'direct', 'tv', '_u', 'about', 'legal', 'developer', 'web']);
   const HEADER_WORDS = /^(username|usuario|user|perfil|profile|value|href|name|decision)$/i;
@@ -212,7 +211,7 @@
     }
     save();
     render();
-    toast(`Deshecho: @${last.u}`);
+    toast(`De vuelta a @${last.u}`);
   }
 
   function reviewLaterAgain() {
@@ -384,7 +383,7 @@
     }
     save();
     render();
-    toast(`Deshecho: @${last.u}`);
+    toast(`De vuelta a @${last.u}`);
   }
 
   function renderUnfollow() {
@@ -398,7 +397,7 @@
     $('ufPause').hidden = !u || !paused;
     $('ufDoneState').hidden = !!u;
     $('ufActions').hidden = !u || paused;
-    $('ufUndo').hidden = !ufHistory.length || paused;
+    $('ufUndo').disabled = !ufHistory.length;
 
     if (u && !paused) {
       $('ufUser').textContent = `@${u}`;
@@ -425,7 +424,10 @@
     }
   }
 
-  $('unfollowChip').addEventListener('click', enterUnfollow);
+  $('unfollowChip').addEventListener('click', () => {
+    if ($('listDlg').open) $('listDlg').close();
+    enterUnfollow();
+  });
   $('startUnfollowBtn').addEventListener('click', enterUnfollow);
   $('ufExit').addEventListener('click', exitUnfollow);
   $('ufBack').addEventListener('click', exitUnfollow);
@@ -478,6 +480,17 @@
   }
   document.querySelectorAll('dialog').forEach(d => d.addEventListener('close', syncNative));
 
+  $('topReload').addEventListener('click', () => { if (native) native.reload(); });
+  $('topExit').addEventListener('click', exitUnfollow);
+
+  // Cabecera compacta de la app: @usuario y posición
+  function renderTopInfo(user, sub) {
+    $('topUser').textContent = user ? `@${user}` : 'IG Review';
+    $('topSub').textContent = sub || '';
+    $('topReload').hidden = !user;
+    $('topExit').hidden = mode !== 'unfollow';
+  }
+
   // Al marcar "Eliminar", la app mira en la página de Instagram si ya no lo sigues
   window.onIgFollowState = (u, s) => {
     if (s === 'not_following' && state.decisions[u] === 'remove' && !state.unfollowed[u]) {
@@ -495,7 +508,6 @@
     if (mode === 'unfollow') { exitUnfollow(); return true; }
     return false;
   };
-  $('backBtn').addEventListener('click', () => { if (native) native.back(); });
 
   function render() {
     const c = counts();
@@ -504,7 +516,6 @@
     $('pending').textContent = c.pending;
     $('keep').textContent = c.keep;
     $('remove').textContent = c.remove;
-    $('later').textContent = c.later;
     $('unfollowedCount').textContent = state.list.filter(u => state.unfollowed[u]).length;
     $('toUnfollow').textContent = pendingUnfollow;
     $('bar').style.width = total ? `${((total - c.pending) / total) * 100}%` : '0';
@@ -517,6 +528,8 @@
     if (inUnfollow) {
       ['welcome', 'review', 'done', 'actions'].forEach(id => { $(id).hidden = true; });
       renderUnfollow();
+      const paused = state.uf.pauseUntil > Date.now();
+      renderTopInfo(paused ? null : ufCurrent(), `✂ ${pendingUnfollow} por dejar · tanda ${state.uf.batch}/${UNFOLLOW_BATCH}`);
       if ($('listDlg').open) renderList();
       syncNative();
       return;
@@ -532,6 +545,7 @@
     document.querySelectorAll('.act[data-d]').forEach(b => { b.disabled = !u; });
     $('undoBtn').disabled = !state.history.length;
 
+    renderTopInfo(u, u ? `${total - c.pending + 1} de ${total}` : '');
     if (u) {
       $('username').textContent = `@${u}`;
       $('position').textContent = `${total - c.pending + 1} de ${total}`;
@@ -539,7 +553,7 @@
       showProfile(u, nextAfter(u));
       resetCard();
     } else if (total) {
-      $('doneText').textContent = `Mantener: ${c.keep} · Eliminar: ${c.remove} · Después: ${c.later}`;
+      $('doneText').textContent = `Mantener: ${c.keep} · Eliminar: ${c.remove}` + (c.later ? ` · Después: ${c.later}` : '');
       $('reviewLaterBtn').hidden = !c.later;
     }
     if ($('listDlg').open) renderList();
@@ -550,7 +564,6 @@
     card.classList.remove('dragging');
     card.style.transform = '';
     card.style.opacity = '';
-    $('stamp').style.opacity = 0;
   }
 
   function flyOut(decision) {
@@ -563,41 +576,6 @@
     card.style.transform = `translate(${dx * 120}%, ${dy * 120}%) rotate(${dx * 12}deg)`;
     card.style.opacity = '0';
     setTimeout(render, 180);
-  }
-
-  // Gestos de deslizar sobre la tarjeta
-  let drag = null;
-  card.addEventListener('pointerdown', e => {
-    if (e.target.closest('a,button')) return;
-    drag = { x: e.clientX, y: e.clientY, id: e.pointerId };
-    card.setPointerCapture(e.pointerId);
-    card.classList.add('dragging');
-  });
-  card.addEventListener('pointermove', e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const dx = e.clientX - drag.x;
-    const dy = Math.min(0, e.clientY - drag.y);
-    card.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx / 20}deg)`;
-    const d = swipeDecision(dx, dy);
-    const stamp = $('stamp');
-    stamp.textContent = d ? LABELS[d] : '';
-    stamp.style.color = d ? COLORS[d] : '';
-    stamp.style.opacity = d ? 1 : 0;
-  });
-  const endDrag = e => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const d = e.type === 'pointerup' ? swipeDecision(e.clientX - drag.x, Math.min(0, e.clientY - drag.y)) : null;
-    drag = null;
-    if (d) decide(d); else resetCard();
-  };
-  card.addEventListener('pointerup', endDrag);
-  card.addEventListener('pointercancel', endDrag);
-
-  function swipeDecision(dx, dy) {
-    const threshold = Math.min(110, window.innerWidth * 0.25);
-    if (Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'keep' : 'remove';
-    if (-dy > threshold) return 'later';
-    return null;
   }
 
   // Botones de decisión
@@ -620,7 +598,6 @@
     }
     if (e.key === 'ArrowRight' || e.key === 'k') decide('keep');
     else if (e.key === 'ArrowLeft' || e.key === 'x') decide('remove');
-    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'l') decide('later');
     else if (e.key === 'z' || e.key === 'Backspace') undo();
     else if ((e.key === 'Enter' || e.key === 'o') && current()) $('openLink').click();
     else return;
@@ -748,6 +725,13 @@
   $('search').addEventListener('input', renderList);
 
   function renderList() {
+    const c = counts();
+    const n = { all: state.list.length, ...c, unfollowed: state.list.filter(u => state.unfollowed[u]).length };
+    $('filters').querySelectorAll('[data-f]').forEach(b => {
+      if (!b.dataset.label) b.dataset.label = b.textContent;
+      b.textContent = `${b.dataset.label} (${n[b.dataset.f] || 0})`;
+      if (b.dataset.f === 'later') b.hidden = !n.later;
+    });
     const q = normalize($('search').value) || $('search').value.trim().toLowerCase().replace(/^@/, '');
     const items = state.list.filter(u => {
       const d = state.decisions[u] || 'pending';
@@ -766,7 +750,9 @@
       a.textContent = `@${u}`;
       const sel = document.createElement('select');
       sel.setAttribute('aria-label', `Decisión para @${u}`);
-      for (const v of ['pending', ...DECISIONS]) sel.add(new Option(LABELS[v], v));
+      for (const v of ['pending', ...DECISIONS]) {
+        if (v !== 'later' || state.decisions[u] === 'later') sel.add(new Option(LABELS[v], v));
+      }
       sel.value = state.decisions[u] || 'pending';
       sel.dataset.v = sel.value;
       sel.dataset.u = u;

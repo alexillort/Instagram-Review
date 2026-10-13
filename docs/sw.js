@@ -1,5 +1,5 @@
 // Sube la versión cada vez que cambies archivos para que los móviles reciban la actualización.
-const CACHE = 'ig-review-v5';
+const CACHE = 'ig-review-v6';
 const ASSETS = ['./', 'index.html', 'styles.css', 'app.js', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {

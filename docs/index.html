@@ -19,7 +19,10 @@
 <body>
   <header class="top">
     <h1>IG Review <span>Lite</span></h1>
+    <div class="top-info native-only"><b id="topUser">IG Review</b><small id="topSub"></small></div>
     <nav>
+      <button id="topExit" class="icon-btn native-only" title="Salir del modo" aria-label="Salir del modo dejar de seguir" hidden>✕</button>
+      <button id="topReload" class="icon-btn native-only" title="Recargar perfil" aria-label="Recargar perfil">↻</button>
       <button id="listBtn" class="icon-btn" title="Ver lista" aria-label="Ver lista">☰</button>
       <button id="importBtn" class="icon-btn" title="Importar" aria-label="Importar">＋</button>
       <button id="exportBtn" class="icon-btn" title="Exportar" aria-label="Exportar">⇩</button>
@@ -32,10 +35,8 @@
       <span><b id="pending">0</b> pendientes</span>
       <span class="c-keep"><b id="keep">0</b> mantener</span>
       <span class="c-remove"><b id="remove">0</b> eliminar</span>
-      <span class="c-later"><b id="later">0</b> después</span>
       <span class="c-unf"><b id="unfollowedCount">0</b> dejados de seguir</span>
     </div>
-    <button id="unfollowChip" class="chip-btn" hidden>✂ Dejar de seguir · <b id="toUnfollow">0</b> pendientes</button>
   </section>
 
   <main id="main">
@@ -50,13 +51,11 @@
     <!-- Revisando -->
     <section id="review" hidden>
       <article id="card" class="card">
-        <div class="stamp" id="stamp"></div>
         <div class="card-head">
           <div class="who">
             <div class="username" id="username">@—</div>
             <div class="position" id="position"></div>
           </div>
-          <button id="backBtn" class="icon-btn small native-only" title="Atrás" aria-label="Atrás">←</button>
           <button id="reloadBtn" class="icon-btn small" title="Recargar perfil" aria-label="Recargar perfil">↻</button>
         </div>
         <div class="frame-wrap" id="frameWrap">
@@ -66,7 +65,6 @@
         </div>
         <p class="frame-note web-only">¿No se ve? La cuenta puede ser privada, no existir o haber cambiado de nombre.</p>
         <a id="openLink" class="btn wide web-only" href="#" target="_blank" rel="noopener noreferrer">Ver en Instagram ↗</a>
-        <p class="tip web-only">Desliza la tarjeta → mantener · ← eliminar · ↑ después</p>
       </article>
     </section>
 
@@ -119,22 +117,21 @@
           <button id="ufBack" class="btn primary wide">Volver</button>
         </div>
 
-        <button id="ufUndo" class="linklike" hidden>↶ Deshacer último</button>
       </article>
     </section>
   </main>
 
   <footer id="actions" class="actions" hidden>
     <button class="act remove" data-d="remove" aria-label="Eliminar"><span>✕</span>Eliminar</button>
-    <button class="act later" data-d="later" aria-label="Después"><span>◷</span>Después</button>
     <button class="act keep" data-d="keep" aria-label="Mantener"><span>✓</span>Mantener</button>
-    <button id="undoBtn" class="act undo" aria-label="Deshacer"><span>↶</span>Deshacer</button>
+    <button id="undoBtn" class="act undo" aria-label="Atrás: volver al perfil anterior"><span>↶</span>Atrás</button>
   </footer>
 
   <footer id="ufActions" class="actions uf" hidden>
     <button id="ufSkip" class="act later" aria-label="Saltar"><span>⏭</span>Saltar</button>
     <button id="ufKeep" class="act keep" aria-label="Mejor mantener"><span>↩</span>Mantener</button>
     <button id="ufDoneBtn" class="act done" aria-label="Hecho, ya lo dejé de seguir"><span>✓</span>Hecho</button>
+    <button id="ufUndo" class="act undo" aria-label="Atrás: volver a la cuenta anterior"><span>↶</span>Atrás</button>
   </footer>
 
   <!-- Importar -->
@@ -176,6 +173,7 @@
   <dialog id="listDlg" class="sheet tall">
     <form method="dialog" class="sheet-body">
       <div class="row between"><h3>Lista</h3><button value="cancel" class="icon-btn" aria-label="Cerrar">✕</button></div>
+      <button type="button" id="unfollowChip" class="chip-btn" hidden>✂ Dejar de seguir · <b id="toUnfollow">0</b> pendientes</button>
       <input id="search" type="search" placeholder="Buscar usuario…" autocomplete="off" />
       <div class="filters" id="filters">
         <button type="button" data-f="all" class="on">Todos</button>

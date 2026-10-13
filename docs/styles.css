@@ -76,10 +76,8 @@ main { flex: 1; display: flex; flex-direction: column; padding: 12px 16px; paddi
   position: relative; width: 100%; max-width: 540px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
   padding: 12px; text-align: center;
-  touch-action: pan-y; user-select: none; -webkit-user-select: none;
   transition: transform .2s ease, opacity .2s ease;
 }
-.card.dragging { transition: none; }
 .card-head { display: flex; align-items: center; gap: 10px; padding: 2px 2px 10px; text-align: left; }
 .who { flex: 1; min-width: 0; }
 .username { font-size: 18px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -100,12 +98,6 @@ main { flex: 1; display: flex; flex-direction: column; padding: 12px 16px; paddi
   background: #fafafa; color: #8e8e8e; font-size: 14px; pointer-events: none;
 }
 .frame-note { color: var(--muted); font-size: 11px; margin: 8px 0; }
-.tip { color: var(--muted); font-size: 11px; margin: 10px 0 0; }
-.stamp {
-  position: absolute; top: 70px; left: 50%; transform: translateX(-50%) rotate(-8deg); z-index: 3;
-  padding: 6px 16px; border: 4px solid currentColor; border-radius: 10px; background: rgba(11, 11, 12, .85);
-  font-size: 22px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; opacity: 0; pointer-events: none;
-}
 
 /* Buttons */
 .btn {
@@ -122,7 +114,7 @@ main { flex: 1; display: flex; flex-direction: column; padding: 12px 16px; paddi
 /* Bottom action bar */
 .actions {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
-  display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px;
+  display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px;
   padding: 10px 12px calc(10px + var(--safe-b));
   background: rgba(11, 11, 12, .92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   border-top: 1px solid var(--border);
@@ -207,27 +199,45 @@ fieldset.mode label { display: flex; gap: 8px; align-items: center; }
 .uf-state .btn { margin-top: 8px; }
 .countdown { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 6px 0 4px; }
 .linklike { display: block; margin: 14px auto 0; background: none; border: 0; color: var(--muted); font-size: 13px; text-decoration: underline; padding: 6px; }
-.actions.uf { grid-template-columns: 1fr 1fr 1.6fr; }
+.actions.uf { grid-template-columns: 1fr 1fr 1.4fr auto; }
 .act.done { color: #111; background: var(--keep); border-color: var(--keep); font-size: 14px; }
 .act.done.pulse { animation: pulse 1.2s ease-in-out infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(52, 199, 89, .35); } }
 .list .unf { flex: none; font-size: 11px; color: #bf5af2; border: 1px solid #4a2d5c; border-radius: 6px; padding: 2px 6px; }
 
-/* App Android: el perfil real de Instagram se dibuja encima de .frame-wrap / .uf-frame */
+/* App Android: el perfil real de Instagram se dibuja encima de .frame-wrap / .uf-frame.
+   Todo lo demás se compacta para dejarle el máximo espacio. */
 body:not(.native) .native-only { display: none !important; }
 body.native .web-only { display: none !important; }
 body.native { height: 100dvh; min-height: 0; overflow: hidden; }
-body.native main { min-height: 0; padding: 8px 8px calc(96px + var(--safe-b)); }
+body.native .top { padding: calc(6px + var(--safe-t)) 10px 6px; gap: 8px; }
+body.native .top h1 { display: none; }
+.top-info { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+.top-info b { font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top-info small { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.native .top .icon-btn { width: 38px; height: 38px; font-size: 16px; }
+body.native .progress { padding: 0; }
+body.native .progress .chips { display: none; }
+body.native .bar { height: 3px; border-radius: 0; }
+body.native main { min-height: 0; padding: 0 0 calc(64px + var(--safe-b)); }
 body.native #review, body.native #unfollow { min-height: 0; align-items: stretch; }
-body.native .card { display: flex; flex-direction: column; max-width: none; padding: 8px; touch-action: auto; }
-body.native .card-head { padding-bottom: 8px; }
-body.native .frame-wrap { flex: 1; height: auto !important; min-height: 160px; background: #000; }
+body.native #review .card, body.native .uf-card {
+  display: flex; flex-direction: column; max-width: none; padding: 0;
+  border: 0; border-radius: 0; background: transparent;
+}
+body.native #review .card-head, body.native .uf-card > .card-head,
+body.native #ufUser, body.native .uf-hint, body.native .uf-meta { display: none !important; }
+body.native .frame-wrap { flex: 1; height: auto !important; min-height: 0; border-radius: 0; background: #000; }
 body.native .ig-frame, body.native .frame-loading { display: none; }
 body.native #ufWork { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-body.native .username.big { font-size: 18px; margin: 0 0 6px; }
 .uf-frame { flex: 1; min-height: 160px; border-radius: 12px; background: #000; }
+body.native .uf-frame { min-height: 0; border-radius: 0; }
+body.native .uf-state { padding: 16px; }
+body.native .panel { padding: 0 16px; }
+body.native .actions { padding: 6px 8px calc(6px + var(--safe-b)); gap: 6px; }
+body.native .act { min-height: 50px; font-size: 11px; border-radius: 12px; }
+body.native .act span { font-size: 18px; }
 .uf-hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
-body.native .uf-meta { margin-top: 6px; }
 
 @media (prefers-reduced-motion: reduce) {
   .act.done.pulse { animation: none; }
